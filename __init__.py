@@ -1,27 +1,41 @@
-import cart
-import products
-from cart import get_cart
-import os
-
-def checkout(username):
-    cart = get_cart(username)
-    total = 0
-    for item in cart:
-        total += item.cost
-
-          
-    #Here the exit can happen when a illegal memory is accessed 
-    # or when a error is not handled properly
-    #os._exit(1)
-    return total
+import json
+from cart import dao
+from products import Product, get_product
 
 
-def complete_checkout(username):
-    cartv = cart.get_cart(username)
-    items = cartv
-    for item in items:
-        assert item.qty >= 1
-    for item in items:
-        cart.delete_cart(username)
-        products.update_qty(item.id, item.qty-1)
+class Cart:
+    def _init_(self, id: int, username: str, contents: list[Product], cost: float):
+        self.id = id
+        self.username = username
+        self.contents = contents
+        self.cost = cost
 
+    @staticmethod
+    def load(data):
+        return Cart(data['id'], data['username'], data['contents'], data['cost'])
+
+
+def get_cart(username: str) -> list:
+    cart_details = dao.get_cart(username)
+    if not cart_details:  # Avoid redundant checks
+        return []
+    
+    items = []
+    for cart_detail in cart_details:
+        contents = json.loads(cart_detail['contents'])  # Use json.loads instead of eval
+        items.extend(contents)
+
+    # Use a list comprehension for concise and efficient product retrieval
+    return [get_product(product_id) for product_id in items]
+
+
+def add_to_cart(username: str, product_id: int):
+    dao.add_to_cart(username, product_id)
+
+
+def remove_from_cart(username: str, product_id: int):
+    dao.remove_from_cart(username, product_id)
+
+
+def delete_cart(username: str):
+    dao.delete_cart(username)
